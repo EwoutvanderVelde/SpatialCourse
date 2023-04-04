@@ -2,3 +2,5 @@
 data
 .Rproj.user
 SpatialCourse.Rproj
+.Rdata
+.Rhistory
