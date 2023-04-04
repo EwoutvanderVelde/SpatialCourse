@@ -2,15 +2,17 @@
 easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", "RColorBrewer", "tidyverse", "osmdata", "nngeo", "FNN", "rpart", "rpart.plot", "sessioninfo", "rattle", "ipred", "tidymodels", "ranger", "modelStudio", "DALEX", "DALEXtra", "vip", "pdp", "rgeos", "spatialRF")
 ```
 
-
+Load in the data
 ```{r}
-housesdata <- st_read("EN-Merged-properties-Distances_num.gpkg")
+housesdata <- st_read("data/nb_df.gpkg")
 ```
 
+Print the columns
 ```{r}
 names(housesdata)
 ```
 
+Make it into a spatial dataFrame and get the distance Matrix
 ```{r}
 housesdata$id <- 1:nrow(housesdata) #this is to give an unique ID to each row
 housesdata$x <- st_coordinates(housesdata)[, 1] #get the X coordinate of the point
@@ -23,8 +25,11 @@ housesdata_spdf <- housesdata %>% st_drop_geometry()
 xy <- housesdata_spdf[, c("x", "y")]
 ```
 
+Columns to predict and the dependent variable
 ```{r}
 predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "construction_size", "age", "property_type_id_id", "real_age", "park", "school", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus")
+
+dependent="price"
 ```
 
 ```{r}
@@ -35,7 +40,7 @@ randon.seed = set.seed(123)
 ```{r}
 spatialHousePriceRF <- spatialRF::rf_spatial(
   data = housesdata_spdf,
-  dependent.variable.name = "price",
+  dependent.variable.name = dependent,
   predictor.variable.names = predictors,
   distance.matrix = distance_matrix,
   distance.thresholds = 0, #here we selected zero as in non-spatial model we found at multiple thresholds they all show auto-correlation
@@ -48,17 +53,14 @@ spatialHousePriceRF <- spatialRF::rf_spatial(
   verbose = TRUE,
   seed = randon.seed
 )
+saveRDS(spatialHousePriceRF, file = 'data/Spatialfitv2.rds')
 
 #print the model result
 spatialHousePriceRF
 ```
 
 ```{r}
-saveRDS(spatialHousePriceRF, file = 'Spatialfit.rds')
-```
-
-```{r}
-spatialHousePriceRF <- readRDS('Spatialfit.rds')
+spatialHousePriceRF <- readRDS('data/Spatialfitv2.rds')
 ```
 
 
@@ -81,13 +83,13 @@ spatialHousePriceRF2
 ```
 
 ```{r}
-saveRDS(spatialHousePriceRF2, file = 'Spatialtune.rds')
+saveRDS(spatialHousePriceRF2, file = 'data/Spatialtunev2.rds')
 ```
 
 
 
 ```{r}
-spatialHousePriceRF2 <- readRDS('Spatialtune.rds')
+spatialHousePriceRF2 <- readRDS('data/Spatialtunev2.rds')
 ```
 
 
@@ -109,11 +111,11 @@ spatialHousePriceRF2.repeat
 
 
 ```{r}
-saveRDS(spatialHousePriceRF2.repeat, file = 'Spatialtunerepeat.rds')
+saveRDS(spatialHousePriceRF2.repeat, file = 'data/Spatialtunerepeatv2.rds')
 ```
 
 ```{r}
-spatialHousePriceRF2.repeat <- readRDS('Spatialtunerepeat.rds')
+spatialHousePriceRF2.repeat <- readRDS('data/Spatialtunerepeatv2.rds')
 ```
 
 
