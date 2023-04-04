@@ -4,7 +4,7 @@ easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", 
 
 Load in the data
 ```{r}
-housesdata <- st_read("data/EN-Merged-properties-Distances_num.gpkg")
+housesdata <- st_read("data/nb_df.gpkg")
 ```
 
 Print the columns
