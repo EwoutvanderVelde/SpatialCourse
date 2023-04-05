@@ -29,7 +29,7 @@ xy <- housesdata_spdf[, c("x", "y")]
 
 Columns to predict and the dependent variable
 ```{r}
-predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "construction_size", "property_type_id_id", "real_age", "parks", "schools", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus", "stadium", "airport")
+predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "real_age", "parks", "schools", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus", "stadium", "airport")
 
 dependent="price"
 ```
