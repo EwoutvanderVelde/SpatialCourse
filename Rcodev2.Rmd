@@ -188,7 +188,7 @@ write.csv(spatialRF::get_importance_local(spatialHousePriceRF2.repeat),
 
 
 ```{r}
-nrun <- "1"
+nrun <- "2"
 start <- paste("data/trees/", nrun, sep="")
 
 # singe value data
