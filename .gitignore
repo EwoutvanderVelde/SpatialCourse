@@ -4,3 +4,5 @@ data
 SpatialCourse.Rproj
 .Rdata
 .Rhistory
+cache
+/cache
