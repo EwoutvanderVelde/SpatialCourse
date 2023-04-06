@@ -90,21 +90,22 @@ spatialHousePriceRF
 
 
 ```{r}
-#saveRDS(spatialHousePriceRF2, file = 'data/Spatialtunev2.rds')
+saveRDS(spatialHousePriceRF, file = 'data/Spatialtunev4.rds')
 ```
 
 
 
 ```{r}
-#spatialHousePriceRF2 <- readRDS('data/Spatialtunev2.rds')
+spatialHousePriceRF <- readRDS('data/Spatialtunev4.rds')
 ```
 
 
 
 ```{r}
+
 #Repeat the spatial RF process 
 spatialHousePriceRF.repeat <- spatialRF::rf_repeat(
-  model = spatialHousePriceRF_tuned, 
+  model = spatialHousePriceRF, 
   repetitions = 5,
   seed = randon.seed,
   verbose = TRUE
