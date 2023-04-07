@@ -1,0 +1,157 @@
+```{r}
+easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", "RColorBrewer", "tidyverse", "osmdata", "nngeo", "FNN", "rpart", "rpart.plot", "sessioninfo", "rattle", "ipred", "tidymodels", "ranger", "modelStudio", "DALEX", "DALEXtra", "vip", "pdp", "rgeos", "spatialRF")
+```
+```{r}
+housesdata <- st_read("data/nb_df_non_norm.gpkg")
+```
+
+```{r}
+housesdatacen <- st_centroid(housesdata)
+
+```
+
+```{r}
+predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "real_age", "parks", "schools", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus", "stadium", "airport")
+
+dependent="price"
+```
+
+```{r}
+random.seed = set.seed(123)
+```
+
+```{r}
+st_coordinates(housesdatacen)
+housesdatacen$id <- 1:nrow(housesdatacen) #this is to give an unique ID to each row
+housesdatacen$x <- st_coordinates(housesdatacen)[, 1] #get the X coordinate of the point
+housesdatacen$y <- st_coordinates(housesdatacen)[, 2] #get the Y coordinate of the point
+
+
+#now convert the file into a SP object, as the gDistance function we are using from rgeos package can only work on SP object
+housesdatacen_sp <- as_Spatial(housesdatacen)
+
+#calculate the distance matrix based on sp object
+distance_matrix <- gDistance(housesdatacen_sp, byid=TRUE)
+
+#distance thresholds (same units as distance_matrix)
+distance.thresholds <- c(0, 100, 300, 500) #these thresholds indicates when we are considering spatial pattern how far we look for neighborhoods, in this case we are going up to 500 m
+
+#drop the geometry column from the main sf object so it does not cause issues with the spatialRF functions
+housesdatacen_spdf <- housesdatacen %>% st_drop_geometry()
+
+#create a xy list for coordinates to plot local importance, if you want check details: https://blasbenito.github.io/spatialRF/
+xy <- housesdatacen_spdf[, c("x", "y")]
+
+```
+
+```{r}
+#Spatial RF
+spatialHouseRF <- spatialRF::rf_spatial(
+  data = housesdatacen_spdf,
+  dependent.variable.name = dependent,
+  predictor.variable.names = predictors,
+  distance.matrix = distance_matrix,
+  #distance.thresholds = 0, #here we selected zero as in non-spatial model we found at multiple thresholds they all show auto-correlation
+  method = "mem.moran.sequential", #default method, you can select other methods too such as mem.effect.recursive, check help for details
+  ranger.arguments = list( #this part we keep same as non-spatial model
+    #mtry = 3,
+    min.node.size = 5,
+    num.trees = 500
+  ),
+  verbose = TRUE,
+  seed = random.seed
+)
+
+#print the model result
+spatialHouseRF
+```
+
+
+```{r}
+#This part we try to tune the hyper parameters of the fitted model
+#It might take some time
+spatialHouseRF <- rf_tuning(
+  model = spatialHouseRF,
+  xy = xy, #location indicating coordinates of each neighborhood 
+  repetitions = 13, #times the tuning process will run, such as K fold CV, here 5 means we used 5 folds
+  #num.trees = c(100, 1000), #the range within which the number of trees the model can select
+  #mtry = seq(
+  #  2,
+  #  length(spatialHouseRF$ranger.arguments$predictor.variable.names), #number of predictors
+  #  by = 9),
+  #min.node.size = c(5, 15), #minimum rows the model can pick between 5 to 15
+  seed = random.seed,
+  verbose = TRUE
+)
+
+spatialHouseRF
+```
+
+```{r}
+spatialHouseRF.repeat <- spatialRF::rf_repeat(
+  model = spatialHouseRF, 
+  repetitions = 10,
+  seed = random.seed,
+  verbose = TRUE
+)
+
+spatialHouseRF.repeat
+```
+
+
+
+```{r}
+nrun <- "7"
+start <- paste("data/trees/", nrun, sep="")
+
+# singe value data
+write.csv(spatialHouseRF.repeat$num.trees, 
+          file = paste(start, "num_trees", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$num.independent.variables, 
+          file = paste(start, "num_independent_variables", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$mtry, 
+          file = paste(start, "mtry", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$min.node.size, 
+          file = paste(start, "min_node_size", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$prediction.error, 
+          file = paste(start, "prediction_error", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$r.squared, 
+          file = paste(start, "r_squared", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$num.samples, 
+          file = paste(start, "num_samples", ".csv" , sep = ""))
+
+
+# simple vectors
+write.csv(spatialHouseRF.repeat$variable.importance, 
+          file = paste(start, "variable_importance", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$variable.importance.local, 
+          file = paste(start, "variable_importance_local", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$performance, 
+          file = paste(start, "performance", ".csv" , sep = ""))
+
+# for the complex
+write.csv(spatialHouseRF.repeat$residuals$values, 
+          file = paste(start, "residuals_values", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$residuals$values.median, 
+          file = paste(start, "residuals_values_median", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$residuals$values.repetitions, 
+          file = paste(start, "residuals_values_repetitions", ".csv" , sep = ""))
+
+write.csv(spatialHouseRF.repeat$predictions$values, 
+          file = paste(start, "predictions_values", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$predictions$values.per.repetition, 
+          file = paste(start, "prediction_values_per_repetition", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$predictions$values.median, 
+          file = paste(start, "prediction_values_median", ".csv" , sep = ""))
+
+write.csv(spatialHouseRF.repeat$importance$per.variable, 
+          file = paste(start, "importance_per_variable", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$importance$per.repetition, 
+          file = paste(start, "importance_per_repetition", ".csv" , sep = ""))
+write.csv(spatialHouseRF.repeat$importance$local, 
+          file = paste(start, "importance_local", ".csv" , sep = ""))
+#write.csv(spatialHousePriceRF.repeat$importance)
+```
+
+
+
