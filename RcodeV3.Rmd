@@ -99,6 +99,62 @@ spatialHouseRF.repeat
 ```
 
 
+```{r}
+VIPrep <- spatialRF::plot_importance(
+  spatialHouseRF.repeat, 
+  verbose = TRUE
+)
+
+VIPrep
+```
+
+```{r}
+PDP1 <- spatialRF::plot_response_curves(
+  spatialHouseRF.repeat, 
+  variables = predictors[0:6],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF") 
+
+PDP2 <- spatialRF::plot_response_curves(
+  spatialHouseRF.repeat, 
+  variables = predictors[7:12],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF")
+
+PDP3 <- spatialRF::plot_response_curves(
+  spatialHouseRF.repeat, 
+  variables = predictors[13:18],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF")
+
+PDP4 <- spatialRF::plot_response_curves(
+  spatialHouseRF.repeat, 
+  variables = predictors[19],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF")
+```
+
+```{r}
+PDP1
+PDP2
+PDP3
+PDP4
+
+```
+
+
 
 ```{r}
 nrun <- "7"
