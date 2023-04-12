@@ -1,17 +1,24 @@
 ```{r}
 easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", "RColorBrewer", "tidyverse", "osmdata", "nngeo", "FNN", "rpart", "rpart.plot", "sessioninfo", "rattle", "ipred", "tidymodels", "ranger", "modelStudio", "DALEX", "DALEXtra", "vip", "pdp", "rgeos", "spatialRF")
 ```
+
 ```{r}
 housesdata <- st_read("data/nb_df_non_norm.gpkg")
 ```
+
+
 
 ```{r}
 housesdatacen <- st_centroid(housesdata)
 
 ```
+```{r}
+names(housesdata)
+
+```
 
 ```{r}
-predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "real_age", "parks", "schools", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus", "stadium", "airport")
+predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "real_age", "parks", "schools", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus", "stadium", "airport", "high_impact.area", "low_impact.area", "service_room","balcony", "water.strorage", "air_conditioning", "pool", "furniture", "accasible_for_handicap", "first_floor", "security","parking_space", "kitchen", "garden", "roof_Garden", "gated_community")
 
 dependent="price"
 ```
@@ -138,7 +145,7 @@ PDP3 <- spatialRF::plot_response_curves(
 
 PDP4 <- spatialRF::plot_response_curves(
   spatialHouseRF.repeat, 
-  variables = predictors[19],
+  variables = predictors[19:21],
   quantiles = 0.5,
   ncol = 3,
   verbose = TRUE
@@ -157,7 +164,7 @@ PDP4
 
 
 ```{r}
-nrun <- "8"
+nrun <- "10"
 start <- paste("data/trees/", nrun, sep="")
 
 # singe value data
