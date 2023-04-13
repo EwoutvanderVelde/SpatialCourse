@@ -1,20 +1,20 @@
 ```{r}
 easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", "RColorBrewer", "tidyverse", "osmdata", "nngeo", "FNN", "rpart", "rpart.plot", "sessioninfo", "rattle", "ipred", "tidymodels", "ranger", "modelStudio", "DALEX", "DALEXtra", "vip", "pdp", "rgeos", "spatialRF")
 ```
-
+Load in the data
 ```{r}
 housesdata <- st_read("data/nb_df_non_norm.gpkg")
 ```
 
-
-
+Calculate centroids
 ```{r}
 housesdatacen <- st_centroid(housesdata)
 
 ```
+
+Get columnnames (usefull for choosing the predictors)
 ```{r}
 names(housesdata)
-
 ```
 
 ```{r}
@@ -27,8 +27,8 @@ dependent="price"
 random.seed = set.seed(123)
 ```
 
+
 ```{r}
-st_coordinates(housesdatacen)
 housesdatacen$id <- 1:nrow(housesdatacen) #this is to give an unique ID to each row
 housesdatacen$x <- st_coordinates(housesdatacen)[, 1] #get the X coordinate of the point
 housesdatacen$y <- st_coordinates(housesdatacen)[, 2] #get the Y coordinate of the point
@@ -51,6 +51,7 @@ xy <- housesdatacen_spdf[, c("x", "y")]
 
 ```
 
+Run the spatial random forest
 ```{r}
 #Spatial RF
 spatialHouseRF <- spatialRF::rf_spatial(
@@ -58,42 +59,29 @@ spatialHouseRF <- spatialRF::rf_spatial(
   dependent.variable.name = dependent,
   predictor.variable.names = predictors,
   distance.matrix = distance_matrix,
-  #distance.thresholds = 0, #here we selected zero as in non-spatial model we found at multiple thresholds they all show auto-correlation
-  method = "mem.moran.sequential", #default method, you can select other methods too such as mem.effect.recursive, check help for details
+  method = "mem.moran.sequential", 
   ranger.arguments = list( #this part we keep same as non-spatial model
-    #mtry = 3,
     min.node.size = 5,
     num.trees = 500
   ),
   verbose = TRUE,
   seed = random.seed
 )
-
-#print the model result
-spatialHouseRF
 ```
 
 
 ```{r}
-#This part we try to tune the hyper parameters of the fitted model
-#It might take some time
+#Tune the hyper parameters of the fitted model
 spatialHouseRF <- rf_tuning(
   model = spatialHouseRF,
   xy = xy, #location indicating coordinates of each neighborhood 
   repetitions = 13, #times the tuning process will run, such as K fold CV, here 5 means we used 5 folds
-  #num.trees = c(100, 1000), #the range within which the number of trees the model can select
-  #mtry = seq(
-  #  2,
-  #  length(spatialHouseRF$ranger.arguments$predictor.variable.names), #number of predictors
-  #  by = 9),
-  #min.node.size = c(5, 15), #minimum rows the model can pick between 5 to 15
   seed = random.seed,
   verbose = TRUE
 )
-
-spatialHouseRF
 ```
 
+Repeat the forest
 ```{r}
 spatialHouseRF.repeat <- spatialRF::rf_repeat(
   model = spatialHouseRF, 
@@ -101,11 +89,9 @@ spatialHouseRF.repeat <- spatialRF::rf_repeat(
   seed = random.seed,
   verbose = TRUE
 )
-
-spatialHouseRF.repeat
 ```
 
-
+Nice info to know for ourself to check
 ```{r}
 VIPrep <- spatialRF::plot_importance(
   spatialHouseRF.repeat, 
@@ -115,6 +101,7 @@ VIPrep <- spatialRF::plot_importance(
 VIPrep
 ```
 
+Nice info to know for ourself to check
 ```{r}
 PDP1 <- spatialRF::plot_response_curves(
   spatialHouseRF.repeat, 
@@ -161,10 +148,9 @@ PDP4
 
 ```
 
-
-
+Save the model data to csv files to import in Python
 ```{r}
-nrun <- "10"
+nrun <- "11"
 start <- paste("data/trees/", nrun, sep="")
 
 # singe value data
@@ -213,7 +199,6 @@ write.csv(spatialHouseRF.repeat$importance$per.repetition,
           file = paste(start, "importance_per_repetition", ".csv" , sep = ""))
 write.csv(spatialHouseRF.repeat$importance$local, 
           file = paste(start, "importance_local", ".csv" , sep = ""))
-#write.csv(spatialHousePriceRF.repeat$importance)
 ```
 
 
