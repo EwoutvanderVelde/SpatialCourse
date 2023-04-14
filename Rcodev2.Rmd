@@ -4,7 +4,7 @@ easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", 
 
 Load in the data
 ```{r}
-housesdata <- st_read("data/nb_df.gpkg")
+housesdata <- st_read("data/nb_df_non_norm.gpkg")
 ```
 
 Print the columns
@@ -60,18 +60,19 @@ spatialHousePriceRF <- spatialRF::rf_spatial(
 spatialHousePriceRF
 ```
 
+
 ```{r}
-saveRDS(spatialHousePriceRF, file = 'data/Spatialfitv2.rds')
+saveRDS(spatialHousePriceRF, file = 'data/Spatialfitv4.rds')
 ```
 
 
 ```{r}
-spatialHousePriceRF <- readRDS('data/Spatialfitv2.rds')
+#spatialHousePriceRF <- readRDS('data/Spatialfitv3.rds')
 ```
 
 
 ```{r}
-spatialHousePriceRF2 <- rf_tuning(
+spatialHousePriceRF <- rf_tuning(
   model = spatialHousePriceRF,
   xy = xy, #location indicating coordinates of each neighborhood 
   repetitions = 5, #times the tuning process will run, such as K fold CV, here 5 means we used 5 folds
@@ -84,27 +85,28 @@ spatialHousePriceRF2 <- rf_tuning(
   seed = randon.seed,
   verbose = TRUE
 )
-spatialHousePriceRF2
+spatialHousePriceRF
 ```
 
 
 ```{r}
-saveRDS(spatialHousePriceRF2, file = 'data/Spatialtunev2.rds')
-```
-
-
-
-```{r}
-spatialHousePriceRF2 <- readRDS('data/Spatialtunev2.rds')
+saveRDS(spatialHousePriceRF, file = 'data/Spatialtunev4.rds')
 ```
 
 
 
 ```{r}
+spatialHousePriceRF <- readRDS('data/Spatialtunev4.rds')
+```
+
+
+
+```{r}
+
 #Repeat the spatial RF process 
-spatialHousePriceRF2.repeat <- spatialRF::rf_repeat(
-  model = spatialHousePriceRF2, 
-  repetitions = 10,
+spatialHousePriceRF.repeat <- spatialRF::rf_repeat(
+  model = spatialHousePriceRF, 
+  repetitions = 5,
   seed = randon.seed,
   verbose = TRUE
 )
@@ -112,23 +114,23 @@ spatialHousePriceRF2.repeat <- spatialRF::rf_repeat(
 ```
 
 ```{r}
-spatialHousePriceRF2.repeat
+spatialHousePriceRF.repeat
 ```
 
 
 ```{r}
-saveRDS(spatialHousePriceRF2.repeat, file = 'data/Spatialtunerepeatv2.rds')
+#saveRDS(spatialHousePriceRF.repeat, file = 'data/Spatialtunerepeatv2.rds')
 ```
 
 ```{r}
-spatialHousePriceRF2.repeat <- readRDS('data/Spatialtunerepeatv2.rds')
+#spatialHousePriceRF.repeat <- readRDS('data/Spatialtunerepeatv2.rds')
 ```
 
 
 
 ```{r}
 VIPrep <- spatialRF::plot_importance(
-  spatialHousePriceRF2.repeat, 
+  spatialHousePriceRF.repeat, 
   verbose = TRUE
 )
 
@@ -137,7 +139,7 @@ VIPrep
 
 ```{r}
 PDP1 <- spatialRF::plot_response_curves(
-  spatialHousePriceRF2.repeat, 
+  spatialHousePriceRF.repeat, 
   variables = predictors[0:6],
   quantiles = 0.5,
   ncol = 3,
@@ -146,7 +148,7 @@ PDP1 <- spatialRF::plot_response_curves(
   ggplot2::ggtitle("Spatial RF") 
 
 PDP2 <- spatialRF::plot_response_curves(
-  spatialHousePriceRF2.repeat, 
+  spatialHousePriceRF.repeat, 
   variables = predictors[7:12],
   quantiles = 0.5,
   ncol = 3,
@@ -155,7 +157,7 @@ PDP2 <- spatialRF::plot_response_curves(
   ggplot2::ggtitle("Spatial RF")
 
 PDP3 <- spatialRF::plot_response_curves(
-  spatialHousePriceRF2.repeat, 
+  spatialHousePriceRF.repeat, 
   variables = predictors[13:18],
   quantiles = 0.5,
   ncol = 3,
@@ -164,8 +166,8 @@ PDP3 <- spatialRF::plot_response_curves(
   ggplot2::ggtitle("Spatial RF")
 
 PDP4 <- spatialRF::plot_response_curves(
-  spatialHousePriceRF2.repeat, 
-  variables = predictors[19:21],
+  spatialHousePriceRF.repeat, 
+  variables = predictors[19],
   quantiles = 0.5,
   ncol = 3,
   verbose = TRUE
@@ -180,63 +182,58 @@ PDP3
 PDP4
 
 ```
-```{r}
-write.csv(spatialRF::get_importance_local(spatialHousePriceRF2.repeat), 
-          file = "data/localImportance.csv")
-
-```
 
 
 ```{r}
-nrun <- "2"
+nrun <- "4"
 start <- paste("data/trees/", nrun, sep="")
 
 # singe value data
-write.csv(spatialHousePriceRF2.repeat$num.trees, 
+write.csv(spatialHousePriceRF.repeat$num.trees, 
           file = paste(start, "num_trees", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$num.independent.variables, 
+write.csv(spatialHousePriceRF.repeat$num.independent.variables, 
           file = paste(start, "num_independent_variables", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$mtry, 
+write.csv(spatialHousePriceRF.repeat$mtry, 
           file = paste(start, "mtry", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$min.node.size, 
+write.csv(spatialHousePriceRF.repeat$min.node.size, 
           file = paste(start, "min_node_size", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$prediction.error, 
+write.csv(spatialHousePriceRF.repeat$prediction.error, 
           file = paste(start, "prediction_error", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$r.squared, 
+write.csv(spatialHousePriceRF.repeat$r.squared, 
           file = paste(start, "r_squared", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$num.samples, 
+write.csv(spatialHousePriceRF.repeat$num.samples, 
           file = paste(start, "num_samples", ".csv" , sep = ""))
 
 
 # simple vectors
-write.csv(spatialHousePriceRF2.repeat$variable.importance, 
+write.csv(spatialHousePriceRF.repeat$variable.importance, 
           file = paste(start, "variable_importance", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$variable.importance.local, 
+write.csv(spatialHousePriceRF.repeat$variable.importance.local, 
           file = paste(start, "variable_importance_local", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$performance, 
+write.csv(spatialHousePriceRF.repeat$performance, 
           file = paste(start, "performance", ".csv" , sep = ""))
 
 # for the complex
-write.csv(spatialHousePriceRF2.repeat$residuals$values, 
+write.csv(spatialHousePriceRF.repeat$residuals$values, 
           file = paste(start, "residuals_values", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$residuals$values.median, 
+write.csv(spatialHousePriceRF.repeat$residuals$values.median, 
           file = paste(start, "residuals_values_median", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$residuals$values.repetitions, 
+write.csv(spatialHousePriceRF.repeat$residuals$values.repetitions, 
           file = paste(start, "residuals_values_repetitions", ".csv" , sep = ""))
 
-write.csv(spatialHousePriceRF2.repeat$predictions$values, 
+write.csv(spatialHousePriceRF.repeat$predictions$values, 
           file = paste(start, "predictions_values", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$predictions$values.per.repetition, 
+write.csv(spatialHousePriceRF.repeat$predictions$values.per.repetition, 
           file = paste(start, "prediction_values_per_repetition", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$predictions$values.median, 
+write.csv(spatialHousePriceRF.repeat$predictions$values.median, 
           file = paste(start, "prediction_values_median", ".csv" , sep = ""))
 
-write.csv(spatialHousePriceRF2.repeat$importance$per.variable, 
+write.csv(spatialHousePriceRF.repeat$importance$per.variable, 
           file = paste(start, "importance_per_variable", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$importance$per.repetition, 
+write.csv(spatialHousePriceRF.repeat$importance$per.repetition, 
           file = paste(start, "importance_per_repetition", ".csv" , sep = ""))
-write.csv(spatialHousePriceRF2.repeat$importance$local, 
+write.csv(spatialHousePriceRF.repeat$importance$local, 
           file = paste(start, "importance_local", ".csv" , sep = ""))
-#write.csv(spatialHousePriceRF2.repeat$importance)
+#write.csv(spatialHousePriceRF.repeat$importance)
 ```
 

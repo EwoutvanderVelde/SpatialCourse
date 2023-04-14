@@ -1,0 +1,253 @@
+```{r}
+easypackages::packages ("rlang", "caret", "sf", "sp", "tmap", "mapview", "car", "RColorBrewer", "tidyverse", "osmdata", "nngeo", "FNN", "rpart", "rpart.plot", "sessioninfo", "rattle", "ipred", "tidymodels", "ranger", "modelStudio", "DALEX", "DALEXtra", "vip", "pdp", "rgeos", "spatialRF")
+```
+
+```{r}
+nrun <- "3"
+```
+
+
+Load in the data
+```{r}
+housesdata <- st_read("data/nb_df_non_norm.gpkg")
+```
+
+Print the columns
+```{r}
+names(housesdata)
+```
+
+Make it into a spatial dataFrame and get the distance Matrix
+```{r}
+housesdatacen <- st_centroid(housesdata)
+housesdata$id <- 1:nrow(housesdata) #this is to give an unique ID to each row
+housesdata$x <- st_coordinates(housesdatacen)[, 1] #get the X coordinate of the point
+housesdata$y <- st_coordinates(housesdatacen)[, 2] #get the Y coordinate of the point
+
+housesdata_sp <- as_Spatial(housesdata)
+distance_matrix <- gDistance(housesdata_sp, byid=TRUE)
+distance.thresholds <- c(0, 100, 300, 500)
+housesdata_spdf <- housesdata %>% st_drop_geometry()
+xy <- housesdata_spdf[, c("x", "y")]
+```
+
+
+Columns to predict and the dependent variable
+```{r}
+predictors = c("bedrooms", "bathrooms", "half_bathrooms", "lot_size", "real_age", "parks", "schools", "university", "hospital", "sport_facility", "supermarket", "mall", "historic", "museum", "industry", "subway", "bus", "stadium", "airport")
+
+dependent="price"
+```
+
+```{r}
+randon.seed = set.seed(123)
+```
+
+
+```{r}
+spatialHousePriceRF <- spatialRF::rf_spatial(
+  data = housesdata_spdf,
+  dependent.variable.name = dependent,
+  predictor.variable.names = predictors,
+  distance.matrix = distance_matrix,
+  #distance.thresholds = 0, #here we selected zero as in non-spatial model we found at multiple thresholds they all show auto-correlation
+  method = "mem.moran.sequential", #default method, you can select other methods too such as mem.effect.recursive, check help for details
+  ranger.arguments = list( #this part we keep same as non-spatial model
+    #mtry = 3,
+    min.node.size = 5,
+    num.trees = 500
+  ),
+  verbose = TRUE,
+  seed = randon.seed
+)
+
+#print the model result
+spatialHousePriceRF
+```
+
+```{r}
+#saveRDS(spatialHousePriceRF, file = 'data/Spatialfitv2.rds')
+```
+
+
+```{r}
+#spatialHousePriceRF <- readRDS('data/Spatialfitv2.rds')
+```
+
+
+```{r}
+spatialHousePriceRF2 <- rf_tuning(
+  model = spatialHousePriceRF,
+  xy = xy, #location indicating coordinates of each neighborhood 
+  repetitions = 5, #times the tuning process will run, such as K fold CV, here 5 means we used 5 folds
+  # num.trees = c(100, 4000), #the range within which the number of trees the model can select
+  # mtry = seq(
+  #   2,
+  #   length(spatialHousePriceRF$ranger.arguments$predictor.variable.names), #number of predictors
+  #   by = 9),
+  # min.node.size = c(1, 15), #minimum rows the model can pick between 5 to 15
+  seed = randon.seed,
+  verbose = TRUE
+)
+spatialHousePriceRF2
+```
+
+```{r}
+spatialHousePriceRF2
+
+```
+
+
+```{r}
+#saveRDS(spatialHousePriceRF2, file = 'data/Spatialtunev2.rds')
+```
+
+
+
+```{r}
+#spatialHousePriceRF2 <- readRDS('data/Spatialtunev2.rds')
+```
+
+
+
+```{r}
+#Repeat the spatial RF process 
+spatialHousePriceRF2.repeat <- spatialRF::rf_repeat(
+  model = spatialHousePriceRF2, 
+  repetitions = 5,
+  seed = randon.seed,
+  verbose = TRUE,
+  n.cores = 1
+)
+
+```
+
+```{r}
+spatialHousePriceRF2.repeat
+```
+
+
+```{r}
+#saveRDS(spatialHousePriceRF2.repeat, file = 'data/Spatialtunerepeatv2.rds')
+```
+
+```{r}
+#spatialHousePriceRF2.repeat <- readRDS('data/Spatialtunerepeatv2.rds')
+```
+
+
+
+```{r}
+VIPrep <- spatialRF::plot_importance(
+  spatialHousePriceRF2.repeat, 
+  verbose = TRUE
+)
+
+VIPrep
+```
+
+```{r}
+PDP1 <- spatialRF::plot_response_curves(
+  spatialHousePriceRF2.repeat, 
+  variables = predictors[0:6],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF") 
+
+PDP2 <- spatialRF::plot_response_curves(
+  spatialHousePriceRF2.repeat, 
+  variables = predictors[7:12],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF")
+
+PDP3 <- spatialRF::plot_response_curves(
+  spatialHousePriceRF2.repeat, 
+  variables = predictors[13:18],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF")
+
+PDP4 <- spatialRF::plot_response_curves(
+  spatialHousePriceRF2.repeat, 
+  variables = predictors[19:21],
+  quantiles = 0.5,
+  ncol = 3,
+  verbose = TRUE
+) + 
+  ggplot2::ggtitle("Spatial RF")
+```
+
+```{r}
+PDP1
+PDP2
+PDP3
+PDP4
+
+```
+```{r}
+write.csv(spatialRF::get_importance_local(spatialHousePriceRF2.repeat), 
+          file = "data/localImportance.csv")
+
+```
+
+
+```{r}
+
+start <- paste("data/trees/", nrun, sep="")
+
+# singe value data
+write.csv(spatialHousePriceRF2.repeat$num.trees, 
+          file = paste(start, "num_trees", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$num.independent.variables, 
+          file = paste(start, "num_independent_variables", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$mtry, 
+          file = paste(start, "mtry", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$min.node.size, 
+          file = paste(start, "min_node_size", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$prediction.error, 
+          file = paste(start, "prediction_error", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$r.squared, 
+          file = paste(start, "r_squared", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$num.samples, 
+          file = paste(start, "num_samples", ".csv" , sep = ""))
+
+
+# simple vectors
+write.csv(spatialHousePriceRF2.repeat$variable.importance, 
+          file = paste(start, "variable_importance", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$variable.importance.local, 
+          file = paste(start, "variable_importance_local", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$performance, 
+          file = paste(start, "performance", ".csv" , sep = ""))
+
+# for the complex
+write.csv(spatialHousePriceRF2.repeat$residuals$values, 
+          file = paste(start, "residuals_values", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$residuals$values.median, 
+          file = paste(start, "residuals_values_median", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$residuals$values.repetitions, 
+          file = paste(start, "residuals_values_repetitions", ".csv" , sep = ""))
+
+write.csv(spatialHousePriceRF2.repeat$predictions$values, 
+          file = paste(start, "predictions_values", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$predictions$values.per.repetition, 
+          file = paste(start, "prediction_values_per_repetition", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$predictions$values.median, 
+          file = paste(start, "prediction_values_median", ".csv" , sep = ""))
+
+write.csv(spatialHousePriceRF2.repeat$importance$per.variable, 
+          file = paste(start, "importance_per_variable", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$importance$per.repetition, 
+          file = paste(start, "importance_per_repetition", ".csv" , sep = ""))
+write.csv(spatialHousePriceRF2.repeat$importance$local, 
+          file = paste(start, "importance_local", ".csv" , sep = ""))
+#write.csv(spatialHousePriceRF2.repeat$importance)
+```
+
